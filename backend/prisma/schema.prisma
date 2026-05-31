@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         Int      @id @default(autoincrement())
+  nombre     String
+  pin_acceso String   @unique
+  rol        String   @default("MESERO") // MESERO, CAJERO, ADMIN
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  orders     Order[]
+  payments   Payment[]
+  voids      VoidRecord[]
+  shifts     Shift[]
+}
+
+model Table {
+  id          Int       @id @default(autoincrement())
+  numero_mesa Int       @unique
+  capacidad   Int
+  estado      String    @default("LIBRE") // LIBRE, OCUPADA, POR_PAGAR, COBRANDO
+  orders      Order[]
+}
+
+model Category {
+  id        Int       @id @default(autoincrement())
+  nombre    String    @unique
+  products  Product[]
+}
+
+model Product {
+  id           Int         @id @default(autoincrement())
+  nombre       String
+  precio       Float
+  imagen       String?
+  id_categoria Int
+  disponible   Boolean     @default(true)
+  archivado    Boolean     @default(false)
+  categoria    Category    @relation(fields: [id_categoria], references: [id])
+  carItems     OrderItem[]
+}
+
+model Order {
+  id            Int         @id @default(autoincrement())
+  tipo_pedido   String      @default("LOCAL") // LOCAL, DOMICILIO
+  id_mesa       Int?
+  id_mesero     Int
+  datos_cliente String?     // JSON stringificado
+  estado        String      @default("ABIERTO") // PENDIENTE, ABIERTO, PREPARANDO, LISTO, EN_CAMINO, ENTREGADO, CERRADO, CANCELADO
+  total         Float       @default(0.0)
+  fecha_creacion DateTime   @default(now())
+  
+  mesa          Table?      @relation(fields: [id_mesa], references: [id])
+  mesero        User        @relation(fields: [id_mesero], references: [id])
+  items         OrderItem[]
+  pagos         Payment[]
+}
+
+model OrderItem {
+  id               Int     @id @default(autoincrement())
+  id_orden         Int
+  id_producto      Int
+  cantidad         Int
+  precio_unitario  Float
+  notas_preparacion String?
+  
+  orden            Order   @relation(fields: [id_orden], references: [id], onDelete: Cascade)
+  producto         Product @relation(fields: [id_producto], references: [id])
+}
+
+model Payment {
+  id           Int      @id @default(autoincrement())
+  id_orden     Int
+  id_cajero    Int
+  id_turno     Int?     // To track which shift this payment belongs to
+  metodo_pago  String   // EFECTIVO, TARJETA, TRANSFERENCIA
+  monto_pagado Float
+  referencia   String?  // Ej. Nequi, DaviPlata, comprobante
+  fecha_pago   DateTime @default(now())
+  
+  orden        Order    @relation(fields: [id_orden], references: [id])
+  cajero       User     @relation(fields: [id_cajero], references: [id])
+  turno        Shift?   @relation(fields: [id_turno], references: [id])
+}
+
+model VoidRecord {
+  id            Int      @id @default(autoincrement())
+  id_cajero     Int
+  id_turno      Int?     // To track which shift this void belongs to
+  tipo          String   // "ORDEN", "PRODUCTO"
+  id_referencia Int      // Order ID or Product ID
+  descripcion   String   // What was voided ("Orden #5" or "1 x Hamburguesa")
+  motivo        String   // Reason for voiding
+  fecha         DateTime @default(now())
+
+  cajero        User     @relation(fields: [id_cajero], references: [id])
+  turno         Shift?   @relation(fields: [id_turno], references: [id])
+}
+
+model Shift {
+  id                  Int          @id @default(autoincrement())
+  id_usuario          Int
+  fecha_apertura      DateTime     @default(now())
+  fecha_cierre        DateTime?
+  fondo_inicial       Float        @default(0)
+  total_efectivo      Float        @default(0)
+  total_tarjeta       Float        @default(0)
+  total_transferencia Float        @default(0)
+  efectivo_contado    Float?
+  descuadre           Float?
+  
+  usuario         User         @relation(fields: [id_usuario], references: [id])
+  pagos           Payment[]
+  voids           VoidRecord[]
+  movimientos     CashMovement[]
+}
+
+model CashMovement {
+  id            Int      @id @default(autoincrement())
+  id_turno      Int
+  tipo          String   // "INGRESO", "EGRESO"
+  monto         Float
+  motivo        String
+  fecha         DateTime @default(now())
+  
+  turno         Shift    @relation(fields: [id_turno], references: [id])
+}
