@@ -4,7 +4,8 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+ DATABASE_URL="postgresql://postgres:MiClaveSuperSecreta2026@localhost:5432/mrg"
+JWT_SECRET="restaurante_pos_jwt_2026_local_hugo_secure"
 }
 
 model User {
