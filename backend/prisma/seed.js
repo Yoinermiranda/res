@@ -1,15 +1,21 @@
 import { PrismaClient } from '@prisma/client';
-import { findUserByPin, hashPin } from '../src/pinSecurity.js';
+import { hashPin } from '../src/pinSecurity.js';
 
 const prisma = new PrismaClient();
 
 async function upsertSeedUser({ nombre, pin, rol }) {
-  const existingUser = await findUserByPin(prisma, pin);
+  const existingUser = await prisma.user.findFirst({
+    where: { nombre }
+  });
 
   if (existingUser) {
     return prisma.user.update({
       where: { id: existingUser.id },
-      data: { nombre, rol, pin_acceso: hashPin(pin) },
+      data: {
+        nombre,
+        rol,
+        pin_acceso: hashPin(pin),
+      },
     });
   }
 
@@ -43,11 +49,7 @@ async function main() {
     rol: 'MESERO',
   });
 
-  console.log('Usuarios base creados:', {
-    admin: { id: admin.id, nombre: admin.nombre, rol: admin.rol },
-    cajero: { id: cajero.id, nombre: cajero.nombre, rol: cajero.rol },
-    mesero: { id: mesero.id, nombre: mesero.nombre, rol: mesero.rol },
-  });
+  console.log('Usuarios base creados correctamente');
 }
 
 main()
