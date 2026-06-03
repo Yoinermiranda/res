@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 import CajeroDashboard from './pages/CajeroDashboard';
 import MeseroDashboard from './pages/MeseroDashboard';
+import CocinaDashboard from './pages/CocinaDashboard';
 import { getStoredUser } from './utils/session';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -39,6 +40,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['ADMIN', 'CAJERO', 'MESERO']}>
               <MeseroDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/cocina"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'CAJERO', 'MESERO', 'COCINA']}>
+              <CocinaDashboard />
             </ProtectedRoute>
           }
         />
