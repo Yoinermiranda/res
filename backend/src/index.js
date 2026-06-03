@@ -72,3 +72,41 @@ startServer().catch((error) => {
   console.error('No se pudo iniciar el servidor:', error);
   process.exit(1);
 });
+app.get('/dev/seed', async (req, res) => {
+  try {
+    const admin = await prisma.user.upsert({
+      where: { nombre: "Admin Principal" },
+      update: {},
+      create: {
+        nombre: "Admin Principal",
+        rol: "ADMIN",
+        pin_acceso: hashPin("1234"),
+      },
+    });
+
+    const cajero = await prisma.user.upsert({
+      where: { nombre: "Caja 1" },
+      update: {},
+      create: {
+        nombre: "Caja 1",
+        rol: "CAJERO",
+        pin_acceso: hashPin("5678"),
+      },
+    });
+
+    const mesero = await prisma.user.upsert({
+      where: { nombre: "Mesero 1" },
+      update: {},
+      create: {
+        nombre: "Mesero 1",
+        rol: "MESERO",
+        pin_acceso: hashPin("0000"),
+      },
+    });
+
+    res.json({ ok: true, admin, cajero, mesero });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
