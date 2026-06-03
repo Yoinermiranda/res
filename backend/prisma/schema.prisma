@@ -7,7 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-mmodel User {
+model User {
   id         Int      @id @default(autoincrement())
   nombre     String
   rol        String
