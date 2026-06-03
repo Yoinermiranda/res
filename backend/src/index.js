@@ -68,6 +68,9 @@ app.get('/dev/seed', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
-
+app.get('/dev/debug-users', async (req, res) => {
+  const users = await prisma.user.findMany();
+  res.json(users);
+});
 // 👇 SOLO AL FINAL
 startServer();
