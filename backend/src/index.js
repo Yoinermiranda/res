@@ -22,7 +22,14 @@ if (!process.env.JWT_SECRET) {
 }
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'https://res-g8sr-dnepeh1oi-yoinermirandas-projects.vercel.app',
+    /\.vercel\.app$/
+  ],
+  credentials: true,
+}));
 app.use(express.json());
 
 /* =========================
