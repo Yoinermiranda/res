@@ -8,12 +8,12 @@ datasource db {
 }
 
 model User {
-  id         Int      @id @default(autoincrement())
+  id         Int       @id @default(autoincrement())
   nombre     String
   rol        String
   pin_acceso String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime? @updatedAt
 
   orders   Order[]
   payments Payment[]
@@ -25,7 +25,7 @@ model Table {
   id          Int     @id @default(autoincrement())
   numero_mesa Int     @unique
   capacidad   Int
-  estado      String  @default("LIBRE") // LIBRE, OCUPADA, POR_PAGAR, COBRANDO
+  estado      String  @default("LIBRE")
   orders      Order[]
 }
 
@@ -49,11 +49,11 @@ model Product {
 
 model Order {
   id             Int      @id @default(autoincrement())
-  tipo_pedido    String   @default("LOCAL") // LOCAL, DOMICILIO
+  tipo_pedido    String   @default("LOCAL")
   id_mesa        Int?
   id_mesero      Int
-  datos_cliente  String? // JSON stringificado
-  estado         String   @default("ABIERTO") // PENDIENTE, ABIERTO, PREPARANDO, LISTO, EN_CAMINO, ENTREGADO, CERRADO, CANCELADO
+  datos_cliente  String?
+  estado         String   @default("ABIERTO")
   total          Float    @default(0.0)
   fecha_creacion DateTime @default(now())
 
@@ -79,10 +79,10 @@ model Payment {
   id           Int      @id @default(autoincrement())
   id_orden     Int
   id_cajero    Int
-  id_turno     Int? // To track which shift this payment belongs to
-  metodo_pago  String // EFECTIVO, TARJETA, TRANSFERENCIA
+  id_turno     Int?
+  metodo_pago  String
   monto_pagado Float
-  referencia   String? // Ej. Nequi, DaviPlata, comprobante
+  referencia   String?
   fecha_pago   DateTime @default(now())
 
   orden  Order  @relation(fields: [id_orden], references: [id])
@@ -93,11 +93,11 @@ model Payment {
 model VoidRecord {
   id            Int      @id @default(autoincrement())
   id_cajero     Int
-  id_turno      Int? // To track which shift this void belongs to
-  tipo          String // "ORDEN", "PRODUCTO"
-  id_referencia Int // Order ID or Product ID
-  descripcion   String // What was voided ("Orden #5" or "1 x Hamburguesa")
-  motivo        String // Reason for voiding
+  id_turno      Int?
+  tipo          String
+  id_referencia Int
+  descripcion   String
+  motivo        String
   fecha         DateTime @default(now())
 
   cajero User   @relation(fields: [id_cajero], references: [id])
@@ -125,7 +125,7 @@ model Shift {
 model CashMovement {
   id       Int      @id @default(autoincrement())
   id_turno Int
-  tipo     String // "INGRESO", "EGRESO"
+  tipo     String
   monto    Float
   motivo   String
   fecha    DateTime @default(now())
