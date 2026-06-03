@@ -1,76 +1,144 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+
 import prisma from './prismaClient.js';
+
 import { generateToken } from './authMiddleware.js';
 import { findUserByPin, migrateLegacyPins, normalizePin } from './pinSecurity.js';
 import { hashPin } from './pinSecurity.js';
 
-// TODAS LAS RUTAS PRIMERO
+// RUTAS
+import userRoutes from './routes/userRoutes.js';
+import menuRoutes from './routes/menuRoutes.js';
+import tableRoutes from './routes/tableRoutes.js';
+import orderRoutes from './routes/orderRoutes.js';
+import reportRoutes from './routes/reportRoutes.js';
+
+dotenv.config();
+
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET no esta configurado en .env');
+}
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+/* =========================
+   ROUTES API
+========================= */
 app.use('/api/users', userRoutes);
 app.use('/api/menu', menuRoutes);
 app.use('/api/tables', tableRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/reports', reportRoutes);
 
-// LOGIN
+/* =========================
+   HEALTH CHECK
+========================= */
+app.get('/ping', (req, res) => {
+  res.send('OK PING');
+});
+
+/* =========================
+   LOGIN
+========================= */
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { pin } = req.body;
-    const user = await findUserByPin(pin);
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid PIN' });
+    const pin = normalizePin(req.body?.pin);
+
+    if (!pin) {
+      return res.status(400).json({ error: 'PIN requerido de 4 digitos' });
     }
+
+    const user = await findUserByPin(prisma, pin);
+
+    if (!user) {
+      return res.status(401).json({ error: 'PIN incorrecto o usuario no existe' });
+    }
+
     const token = generateToken(user);
-    res.json({ ok: true, token, user });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: e.message });
+
+    return res.json({
+      ok: true,
+      token,
+      user: {
+        id: user.id,
+        nombre: user.nombre,
+        rol: user.rol
+      }
+    });
+
+  } catch (err) {
+    console.error('Login error:', err);
+    return res.status(500).json({ error: 'Error del servidor' });
   }
 });
 
-// 👇 AQUÍ EL SEED (ANTES DE START)
+/* =========================
+   SEED (CREAR USUARIOS)
+========================= */
 app.get('/dev/seed', async (req, res) => {
   try {
-    const admin = await prisma.user.upsert({
-      where: { id: 1 },
-      update: {},
-      create: {
-        nombre: "Admin Principal",
-        rol: "ADMIN",
-        pin_acceso: hashPin("1234"),
-      },
+    await prisma.user.createMany({
+      data: [
+        {
+          nombre: "Admin Principal",
+          rol: "ADMIN",
+          pin_acceso: hashPin("1234"),
+        },
+        {
+          nombre: "Caja 1",
+          rol: "CAJERO",
+          pin_acceso: hashPin("5678"),
+        },
+        {
+          nombre: "Mesero 1",
+          rol: "MESERO",
+          pin_acceso: hashPin("0000"),
+        }
+      ],
+      skipDuplicates: true
     });
 
-    const cajero = await prisma.user.upsert({
-      where: { id: 2 },
-      update: {},
-      create: {
-        nombre: "Caja 1",
-        rol: "CAJERO",
-        pin_acceso: hashPin("5678"),
-      },
-    });
+    res.json({ ok: true, message: "Usuarios creados" });
 
-    const mesero = await prisma.user.upsert({
-      where: { id: 3 },
-      update: {},
-      create: {
-        nombre: "Mesero 1",
-        rol: "MESERO",
-        pin_acceso: hashPin("0000"),
-      },
-    });
-
-    res.json({ ok: true, admin, cajero, mesero });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });
   }
 });
+
+/* =========================
+   DEBUG USERS
+========================= */
 app.get('/dev/debug-users', async (req, res) => {
-  const users = await prisma.user.findMany();
-  res.json(users);
+  try {
+    const users = await prisma.user.findMany();
+    res.json(users);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
-// 👇 SOLO AL FINAL
+
+/* =========================
+   START SERVER
+========================= */
+const PORT = process.env.PORT || 5000;
+
+async function startServer() {
+  try {
+    await migrateLegacyPins(prisma);
+
+    app.listen(PORT, () => {
+      console.log(`Servidor corriendo en puerto ${PORT}`);
+    });
+
+  } catch (err) {
+    console.error('Error iniciando servidor:', err);
+    process.exit(1);
+  }
+}
+
 startServer();
