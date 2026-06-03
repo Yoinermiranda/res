@@ -7,12 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 model User {
-  id          Int     @id @default(autoincrement())
-  nombre      String  @unique
-  rol         String
-  pin_acceso  String
-}
+  id        Int      @id @default(autoincrement())
+  nombre    String
+  rol       String
+  pin_acceso String
 
+  orders    Order[]
+  payments  Payment[]
+  voids     VoidRecord[]
+  shifts    Shift[]
+}
 model Table {
   id          Int       @id @default(autoincrement())
   numero_mesa Int       @unique
