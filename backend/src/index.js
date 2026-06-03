@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import prisma from './prismaClient.js';
 import { generateToken } from './authMiddleware.js';
 import { findUserByPin, migrateLegacyPins, normalizePin } from './pinSecurity.js';
+import { hashPin } from './pinSecurity.js';
 
 import userRoutes from './routes/userRoutes.js';
 import menuRoutes from './routes/menuRoutes.js';
