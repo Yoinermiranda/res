@@ -27,6 +27,9 @@ function Login() {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
 
+      // Desbloquear audio del navegador en el gesto del login
+      try { new (window.AudioContext || window.webkitAudioContext)(); } catch (_) {}
+
       if (data.user.rol === 'ADMIN') navigate('/admin');
       else if (data.user.rol === 'CAJERO') navigate('/cajero');
       else if (data.user.rol === 'MESERO') navigate('/mesero');

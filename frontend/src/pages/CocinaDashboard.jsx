@@ -15,20 +15,25 @@ function elapsed(createdAt) {
 function playNewOrderSound() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    [0, 0.18, 0.36].forEach((t) => {
+    if (ctx.state === 'suspended') ctx.resume();
+    const t = ctx.currentTime;
+    [0, 0.18, 0.36].forEach((offset) => {
       const osc  = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, ctx.currentTime + t);
-      osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + t + 0.12);
-      gain.gain.setValueAtTime(0.35, ctx.currentTime + t);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.14);
-      osc.start(ctx.currentTime + t);
-      osc.stop(ctx.currentTime + t + 0.15);
+      osc.frequency.setValueAtTime(880, t + offset);
+      osc.frequency.exponentialRampToValueAtTime(660, t + offset + 0.12);
+      gain.gain.setValueAtTime(0.35, t + offset);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + offset + 0.14);
+      osc.start(t + offset);
+      osc.stop(t + offset + 0.15);
     });
-  } catch (_) {}
+    console.log('🔔 playNewOrderSound ejecutado OK');
+  } catch (err) {
+    console.error('🔇 Error en playNewOrderSound:', err);
+  }
 }
 
 function CocinaDashboard() {
@@ -47,9 +52,22 @@ function CocinaDashboard() {
   const [connected, setConnected]           = useState(true);
   const [lastUpdated, setLastUpdated]       = useState(null);
   const [newOrderIds, setNewOrderIds]       = useState(new Set());
+  const [audioReady, setAudioReady]         = useState(false);
 
   const knownIdsRef   = useRef(new Set());
   const completingRef = useRef(new Set());
+  const initializedRef = useRef(false);
+
+  const activateAudio = () => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      ctx.resume();
+      setAudioReady(true);
+      console.log('✅ Audio activado, estado:', ctx.state);
+    } catch (err) {
+      console.error('Error activando audio:', err);
+    }
+  };
 
   const DONE_KEY     = 'cocina_done_items';
   const getDoneItems = () => JSON.parse(localStorage.getItem(DONE_KEY) || '{}');
@@ -96,7 +114,11 @@ function CocinaDashboard() {
         (id) => !knownIdsRef.current.has(id) && !completingRef.current.has(id)
       );
 
-      if (freshIds.length > 0 && knownIdsRef.current.size > 0) {
+      console.log('📦 fetchOrders — total:', normalized.length, '| conocidos:', knownIdsRef.current.size, '| nuevos:', freshIds.length, '| inicializado:', initializedRef.current);
+
+      // Solo sonar si ya pasó la primera carga (no al montar el componente)
+      if (freshIds.length > 0 && initializedRef.current) {
+        console.log('🔔 Pedido nuevo detectado, llamando playNewOrderSound...');
         playNewOrderSound();
         setNewOrderIds((prev) => new Set([...prev, ...freshIds]));
         setTimeout(() => {
@@ -111,6 +133,12 @@ function CocinaDashboard() {
       knownIdsRef.current = new Set(
         [...incomingIds].filter((id) => !completingRef.current.has(id))
       );
+
+      // Marcar que ya terminó la primera carga
+      if (!initializedRef.current) {
+        initializedRef.current = true;
+        console.log('✅ Primera carga completada, desde ahora sonará con pedidos nuevos');
+      }
 
       setOrders((prev) => {
         const prevMap   = Object.fromEntries(prev.map((o) => [o.id, o]));
@@ -208,7 +236,7 @@ function CocinaDashboard() {
     navigate('/');
   };
 
-  const bg      = darkMode ? 'bg-[#0d0f18]'       : 'bg-slate-50';
+  const bg       = darkMode ? 'bg-[#0d0f18]'       : 'bg-slate-50';
   const surface  = darkMode ? 'bg-[#161922]'       : 'bg-white';
   const surface2 = darkMode ? 'bg-[#1e2132]'       : 'bg-slate-50';
   const border   = darkMode ? 'border-white/[.07]' : 'border-slate-200';
@@ -273,6 +301,20 @@ function CocinaDashboard() {
                   : 'En línea'
                 : 'Sin conexión'}
             </div>
+
+            {!audioReady && (
+              <button
+                onClick={activateAudio}
+                className={[
+                  'rounded-xl px-3.5 py-2 text-sm font-bold transition-all duration-200 animate-pulse',
+                  darkMode
+                    ? 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30'
+                    : 'bg-orange-100 text-orange-600 hover:bg-orange-200',
+                ].join(' ')}
+              >
+                🔔 Activar sonido
+              </button>
+            )}
 
             <button onClick={fetchOrders} title="Actualizar" className={['rounded-xl px-3.5 py-2 text-sm font-bold transition-all duration-200 active:scale-95', darkMode ? 'bg-white/[.05] text-slate-400 hover:bg-white/[.09] hover:text-slate-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700'].join(' ')}>🔄</button>
 
