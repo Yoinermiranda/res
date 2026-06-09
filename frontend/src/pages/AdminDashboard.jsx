@@ -88,6 +88,8 @@ function AdminDashboard() {
   const [productForm, setProductForm] = useState(EMPTY_PRODUCT);
   const [tableForm, setTableForm] = useState(EMPTY_TABLE);
   const [newCategory, setNewCategory] = useState('');
+  // ── NUEVO: estado para edición inline de categoría ────────────────────────
+  const [editingCategory, setEditingCategory] = useState(null); // { id, nombre }
   const [shifts, setShifts] = useState([]);
 
   // ── MODAL STATES ──────────────────────────────────────────────────────────
@@ -256,6 +258,21 @@ function AdminDashboard() {
       if (response.ok) { setNewCategory(''); setShowCategoryModal(false); await loadMenu(); }
     } catch (error) { console.error('Save category error:', error); }
   };
+
+  // ── NUEVO: guardar edición de categoría ───────────────────────────────────
+  const handleEditCategorySubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await fetch(`${API_BASE}/api/menu/categories/${editingCategory.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ nombre: editingCategory.nombre.trim() }),
+      });
+      if (response.ok) { setEditingCategory(null); await loadMenu(); }
+      else alert('No se pudo actualizar la categoría.');
+    } catch (error) { console.error('Edit category error:', error); }
+  };
+  // ─────────────────────────────────────────────────────────────────────────
 
   const handleDeleteCategory = async (id) => {
     if (!window.confirm('¿Eliminar esta categoria?')) return;
@@ -758,8 +775,6 @@ function AdminDashboard() {
                         {table.capacidad} pax
                       </div>
 
-                   
-
                       {/* Número */}
                       <p className={`mt-1 text-5xl font-black tabular-nums ${ocupada ? 'text-red-500' : 'text-emerald-500'}`}>
                         {table.numero_mesa}
@@ -769,7 +784,6 @@ function AdminDashboard() {
                       <span className={['mt-2 rounded-lg px-3 py-1 text-[10px] font-black uppercase tracking-widest', ocupada ? darkMode ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-600' : darkMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700'].join(' ')}>
                         {ocupada ? 'Ocupada' : 'Libre'}
                       </span>
-
 
                       {/* Acciones */}
                       <div className={`mt-2 grid w-full grid-cols-2 gap-1.5 border-t pt-3 ${borderB}`}>
@@ -944,7 +958,7 @@ function AdminDashboard() {
       {/* ── MODAL: CATEGORÍA ─────────────────────────────────────────────────── */}
       <Modal
         open={showCategoryModal}
-        onClose={() => { setShowCategoryModal(false); setNewCategory(''); }}
+        onClose={() => { setShowCategoryModal(false); setNewCategory(''); setEditingCategory(null); }}
         title="Gestionar categorías"
         darkMode={darkMode}
       >
@@ -971,16 +985,46 @@ function AdminDashboard() {
               key={category.id}
               className={`group flex items-center gap-1.5 rounded-lg border py-1.5 pl-3 pr-2 text-xs font-bold transition-all duration-200 hover:border-red-500/30 hover:bg-red-500/[.07] ${darkMode ? 'border-white/[.08] bg-white/[.04] text-slate-300' : 'border-slate-200 bg-white text-slate-700 shadow-sm'}`}
             >
-              <span className="text-sm leading-none">{getCategoryIcon(category.nombre)}</span>
-              {category.nombre}
-              <button
-                type="button"
-                onClick={() => handleDeleteCategory(category.id)}
-                className={`ml-0.5 flex h-5 w-5 items-center justify-center rounded-md transition-colors duration-150 group-hover:bg-red-500/20 group-hover:text-red-500 ${darkMode ? 'bg-white/[.06] text-slate-500' : 'bg-slate-100 text-slate-400'}`}
-                title="Eliminar categoría"
-              >
-                <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
+              {editingCategory?.id === category.id ? (
+                // ── Formulario inline de edición ──────────────────────────────
+                <form onSubmit={handleEditCategorySubmit} className="flex items-center gap-1.5">
+                  <input
+                    autoFocus
+                    required
+                    value={editingCategory.nombre}
+                    onChange={(e) => setEditingCategory({ ...editingCategory, nombre: e.target.value })}
+                    className={inputCls}
+                    style={{ width: 120, padding: '2px 8px', fontSize: 12 }}
+                  />
+                  <button type="submit" className="font-black text-xs text-violet-500 hover:text-violet-400">✓</button>
+                  <button type="button" onClick={() => setEditingCategory(null)} className={`text-xs font-black ${muted}`}>✕</button>
+                </form>
+              ) : (
+                <>
+                  <span className="text-sm leading-none">{getCategoryIcon(category.nombre)}</span>
+                  {category.nombre}
+                  {/* ── Botón editar ── */}
+                  <button
+                    type="button"
+                    onClick={() => setEditingCategory({ id: category.id, nombre: category.nombre })}
+                    className={`ml-0.5 flex h-5 w-5 items-center justify-center rounded-md transition-colors duration-150 hover:bg-violet-500/20 hover:text-violet-500 ${darkMode ? 'bg-white/[.06] text-slate-500' : 'bg-slate-100 text-slate-400'}`}
+                    title="Editar categoría"
+                  >
+                    <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 2.828L11.828 15.828a2 2 0 01-1.414.586H9v-2a2 2 0 01.586-1.414z" />
+                    </svg>
+                  </button>
+                  {/* ── Botón eliminar (sin cambios) ── */}
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteCategory(category.id)}
+                    className={`ml-0.5 flex h-5 w-5 items-center justify-center rounded-md transition-colors duration-150 group-hover:bg-red-500/20 group-hover:text-red-500 ${darkMode ? 'bg-white/[.06] text-slate-500' : 'bg-slate-100 text-slate-400'}`}
+                    title="Eliminar categoría"
+                  >
+                    <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </>
+              )}
             </div>
           ))}
           {categories.length === 0 && <p className={`text-xs ${muted}`}>No hay categorías creadas aún.</p>}
