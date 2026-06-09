@@ -12,5 +12,5 @@ export function getCategoryIcon(name) {
   if (value.includes('mar') || value.includes('pescado') || value.includes('camaron')) return '🍤';
   if (value.includes('cafe') || value.includes('bebidas calientes')) return '☕';
 
-  return '🍽️';
+  return '';
 }
